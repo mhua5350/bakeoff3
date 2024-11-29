@@ -169,6 +169,9 @@ void setup()
   }
   
   currSuggestions = new String[numSuggestions];
+  for (int i = 0; i < numSuggestions; i++) {
+    currSuggestions[i] = ""; 
+  }
   
 }
 
@@ -320,7 +323,7 @@ void mousePressed() {
     }
   }
   
-  if (prefixChanged) {
+  if (prefixChanged && currPrefix.length() > 1) {
     ArrayList<StrFreq> allSuggestions = trie.search(currPrefix);
     Collections.sort(allSuggestions, new Comparator<StrFreq>() {
       public int compare(StrFreq kv1, StrFreq kv2) {

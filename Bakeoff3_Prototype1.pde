@@ -171,10 +171,7 @@ void setup()
   
   // Set each suggestion to 0 initially
   currSuggestions = new String[numSuggestions];
-  for (int i = 0; i < numSuggestions; i++) {
-    currSuggestions[i] = ""; 
-  }
-  
+  setDefaultSuggestions();
 }
 
 //You can modify anything in here. This is just a basic implementation.
@@ -297,14 +294,20 @@ void mousePressed() {
         // If the clicked letter is "-", add a space to the typed string
         currentTyped += " ";
         currPrefix = "";
+        setDefaultSuggestions();
       } else if (s.equals("<")) {
         // If the clicked letter is "<", perform a backspace
         if (currentTyped.length() > 0) {
           currentTyped = currentTyped.substring(0, currentTyped.length() - 1);
         }
         if (currPrefix.length() > 0) {
+          if (currPrefix.length() == 1) {
+            setDefaultSuggestions(); 
+          }
           currPrefix = currPrefix.substring(0, currPrefix.length() - 1);
+          
         }
+
       } else {
         // Add the selected letter group to the current typed string
         currentTyped += s;
@@ -352,9 +355,12 @@ void mousePressed() {
   }
 }
 
-
-
-
+void setDefaultSuggestions() {
+  String[] top10 = {"the", "of", "and", "to", "a", "in", "for", "is", "on", "that"};
+  for (int i = 0; i < numSuggestions; i++) {
+    currSuggestions[i] = top10[i];
+  }
+}
 
 void nextTrial()
 {

@@ -1,6 +1,8 @@
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
+import java.util.Comparator;
 
 // Set the DPI to make your smartwatch 1 inch square. Measure it on the screen
 final int DPIofYourDeviceScreen = 140; //you will need to look up the DPI or PPI of your device to make sure you get the right scale!!
@@ -120,8 +122,10 @@ class Trie
 HashMap<String, Box> strToBox = new HashMap<String, Box>();
 HashMap<Integer, Box> suggestionToBox = new HashMap<Integer, Box>();
 String[] currSuggestions;
-String currPrefix = "";
+Trie trie = new Trie();
 
+boolean prefixChanged = false;
+String currPrefix = "";
 int gridRows = 6; // Number of rows
 int gridCols = 6; // Number of columns
 int numSuggestions = 3;
@@ -153,6 +157,19 @@ void setup()
   buttonHeight = sizeOfInputArea / gridRows; // Calculate button height based on rows
   
   suggestionWidth = sizeOfInputArea / numSuggestions;
+  
+  String[] lines = loadStrings("ngrams/count_1w.txt");
+
+  // Process each line
+  for (String line : lines) {
+    String[] columns = split(line, '\t'); // Split the line by the tab character
+    String word = columns[0];
+    long freq = Long.parseLong(columns[1]);
+    trie.insert(word, freq);
+  }
+  
+  currSuggestions = new String[numSuggestions];
+  
 }
 
 //You can modify anything in here. This is just a basic implementation.
@@ -223,7 +240,7 @@ void drawSuggestionGrid() {
     fill(0);
     textAlign(CENTER, CENTER);
     textSize(8);
-    text("placeholder", x + suggestionWidth / 2, y + buttonHeight / 2);
+    text(currSuggestions[i], x + suggestionWidth / 2, y + buttonHeight / 2);
     textSize(16);
   }
    // Draw grid lines
@@ -266,15 +283,14 @@ boolean didMouseClick(float x, float y, float w, float h) //simple function to d
 
 void mousePressed() {
   if (startTime == 0) return;
-  boolean buttonPressed = false;
   for (String s : alphabetGroups) {
     Box box = strToBox.get(s);
     if (didMouseClick(box.x, box.y, box.w, box.h)) {
-      buttonPressed = true;
       if (s.equals("-")) {
         // If the clicked letter is "-", add a space to the typed string
         currentTyped += " ";
         currPrefix = "";
+        prefixChanged = true;
       } else if (s.equals("<")) {
         // If the clicked letter is "<", perform a backspace
         if (currentTyped.length() > 0) {
@@ -282,11 +298,13 @@ void mousePressed() {
         }
         if (currPrefix.length() > 0) {
           currPrefix = currPrefix.substring(0, currPrefix.length() - 1);
+          prefixChanged = true;
         }
       } else {
         // Add the selected letter group to the current typed string
         currentTyped += s;
         currPrefix += s;
+        prefixChanged = true;
       }
     }
   }
@@ -294,13 +312,34 @@ void mousePressed() {
   for (int i = 0; i < numSuggestions; i++) {
     Box box = suggestionToBox.get(i);
     if (didMouseClick(box.x, box.y, box.w, box.h)) {
-      buttonPressed = true;
+      prefixChanged = true;
       currentTyped = currentTyped.substring(0, currentTyped.length() - currPrefix.length());
-      currentTyped += "placeholder";
+      currentTyped += currSuggestions[i];
       currentTyped += " ";
       currPrefix = "";
     }
   }
+  
+  if (prefixChanged) {
+    ArrayList<StrFreq> allSuggestions = trie.search(currPrefix);
+    Collections.sort(allSuggestions, new Comparator<StrFreq>() {
+      public int compare(StrFreq kv1, StrFreq kv2) {
+        return Long.compare(kv2.f, kv1.f);
+      }
+    });
+    
+    int totalNumSuggestions = min(allSuggestions.size(), numSuggestions); 
+    for (int i = 0; i < numSuggestions; i++) {
+      if (i < totalNumSuggestions) {
+        currSuggestions[i] = allSuggestions.get(i).c; 
+      }
+      else {
+        currSuggestions[i] = "";
+      }
+    }
+  }
+  
+  
 
   // Handle the "NEXT" button click
   if (didMouseClick(600, 600, 200, 200)) {

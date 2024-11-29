@@ -45,8 +45,7 @@ class StrFreq
   String c;
   long f;
   
-  StrFreq(String c, long f)
-  {
+  StrFreq(String c, long f) {
     this.c = c;
     this.f = f;
   }
@@ -59,8 +58,7 @@ class TrieNode
   boolean endOfWord;
   HashMap<Character, TrieNode> children;
 
-  TrieNode(char c, long f)
-  {
+  TrieNode(char c, long f) {
     this.children = new HashMap<Character, TrieNode>();
     this.c = c;
     this.f = f;
@@ -96,41 +94,39 @@ class Trie
     TrieNode curr = root;
     ArrayList<StrFreq> suggestions = new ArrayList<StrFreq>();
 
-    for (char letter : prefix.toCharArray())
-    {
-      if (!curr.children.containsKey(letter)) 
-      {
+    for (char letter : prefix.toCharArray()) {
+      if (!curr.children.containsKey(letter)) {
         return suggestions;
       }
       curr = curr.children.get(letter);
     }
 
     getWords(prefix, curr, suggestions);
-
     return suggestions;
   }
 
-  // Helper function to collect all words under a given node
-  void getWords(String prefix, TrieNode node, ArrayList<StrFreq> suggests) 
-  {
+  void getWords(String prefix, TrieNode node, ArrayList<StrFreq> suggestions) {
     if (node.endOfWord) {
       StrFreq sf = new StrFreq(prefix, node.f);
-      suggests.add(sf);
+      suggestions.add(sf);
     }
 
     for (char letter : node.children.keySet()) {
-      getWords(prefix+letter, node.children.get(letter), suggests);
+      getWords(prefix + letter, node.children.get(letter), suggestions);
     }
   }
 }
 
 HashMap<String, Box> strToBox = new HashMap<String, Box>();
-HashMap<String, Box> suggestionToBox = new HashMap<String, Box>();
-String[] CurrSuggestions;
+HashMap<Integer, Box> suggestionToBox = new HashMap<Integer, Box>();
+String[] currSuggestions;
+String currPrefix = "";
 
 int gridRows = 6; // Number of rows
 int gridCols = 6; // Number of columns
+int numSuggestions = 3;
 float buttonWidth, buttonHeight; // Size of each grid button
+float suggestionWidth;
 String[] alphabetGroups = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "-", "<"}; // Letter groups for grid
 boolean isGridVisible = true; // Flag to control grid visibility
 
@@ -155,13 +151,15 @@ void setup()
   
   buttonWidth = sizeOfInputArea / gridCols; // Calculate button width based on columns
   buttonHeight = sizeOfInputArea / gridRows; // Calculate button height based on rows
+  
+  suggestionWidth = sizeOfInputArea / numSuggestions;
 }
 
 //You can modify anything in here. This is just a basic implementation.
 void draw()
 {
   background(255); //clear background
-  drawWatch(); //draw watch background
+  drawWatch(); //draw watch backgroundp
   fill(100);
   rect(width/2-sizeOfInputArea/2, height/2-sizeOfInputArea/2, sizeOfInputArea, sizeOfInputArea); //input area should be 1" by 1"
 
@@ -203,11 +201,34 @@ void draw()
     text("NEXT > ", 650, 650); //draw next label
     
     drawGrid(); // Draw the grid of letters
+    drawSuggestionGrid();
 
   }
   
   //draw cursor with middle of the finger nail being the cursor point. do not change this.
   image(mouseCursor, mouseX+cursorWidth/2-cursorWidth/3, mouseY+cursorHeight/2-cursorHeight/5, cursorWidth, cursorHeight); //draw user cursor   
+}
+
+void drawSuggestionGrid() {
+  for (int i = 0; i < numSuggestions; i++) {
+    float x = width / 2 - sizeOfInputArea / 2 + i * suggestionWidth;
+    float y = height / 2 - sizeOfInputArea / 2;
+    fill(200);
+    rect(x, y, suggestionWidth, buttonHeight);
+    
+    Box box = new Box(x, y, suggestionWidth, buttonHeight);
+    suggestionToBox.put(i, box);
+    
+    // Display the group of letters
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textSize(8);
+    text("placeholder", x + suggestionWidth / 2, y + buttonHeight / 2);
+    textSize(16);
+  }
+   // Draw grid lines
+  stroke(0); // Set grid line color
+  strokeWeight(1); // Set line thickness
 }
 
 void drawGrid() {
@@ -217,7 +238,7 @@ void drawGrid() {
       if (index < alphabetGroups.length) {
         // Draw each box
         float x = width / 2 - sizeOfInputArea / 2 + j * buttonWidth;
-        float y = height / 2 - sizeOfInputArea / 2 + i * buttonHeight;
+        float y = height / 2 - sizeOfInputArea / 2 + (i + 1) * buttonHeight;
         fill(200);
         rect(x, y, buttonWidth, buttonHeight);
         
@@ -245,21 +266,39 @@ boolean didMouseClick(float x, float y, float w, float h) //simple function to d
 
 void mousePressed() {
   if (startTime == 0) return;
+  boolean buttonPressed = false;
   for (String s : alphabetGroups) {
     Box box = strToBox.get(s);
     if (didMouseClick(box.x, box.y, box.w, box.h)) {
+      buttonPressed = true;
       if (s.equals("-")) {
         // If the clicked letter is "-", add a space to the typed string
         currentTyped += " ";
+        currPrefix = "";
       } else if (s.equals("<")) {
         // If the clicked letter is "<", perform a backspace
         if (currentTyped.length() > 0) {
           currentTyped = currentTyped.substring(0, currentTyped.length() - 1);
         }
+        if (currPrefix.length() > 0) {
+          currPrefix = currPrefix.substring(0, currPrefix.length() - 1);
+        }
       } else {
         // Add the selected letter group to the current typed string
         currentTyped += s;
+        currPrefix += s;
       }
+    }
+  }
+  
+  for (int i = 0; i < numSuggestions; i++) {
+    Box box = suggestionToBox.get(i);
+    if (didMouseClick(box.x, box.y, box.w, box.h)) {
+      buttonPressed = true;
+      currentTyped = currentTyped.substring(0, currentTyped.length() - currPrefix.length());
+      currentTyped += "placeholder";
+      currentTyped += " ";
+      currPrefix = "";
     }
   }
 
@@ -275,6 +314,7 @@ void mousePressed() {
 
 void nextTrial()
 {
+  currPrefix = "";
   if (currTrialNum >= totalTrialNum) //check to see if experiment is done
     return; //if so, just return
 

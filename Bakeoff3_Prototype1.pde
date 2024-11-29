@@ -25,11 +25,108 @@ PImage mouseCursor;
 float cursorHeight;
 float cursorWidth;
 
-dfaf
+class Box
+{
+  float x;
+  float y;
+  float w;
+  float h;
+  
+  Box(float x, float y, float w, float h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+  }
+}
 
+class StrFreq
+{
+  String c;
+  long f;
+  
+  StrFreq(String c, long f)
+  {
+    this.c = c;
+    this.f = f;
+  }
+}
 
-//Variables for my silly implementation. You can delete this:
-char currentLetter = 'a';
+class TrieNode
+{
+  char c;
+  long f;
+  boolean endOfWord;
+  HashMap<Character, TrieNode> children;
+
+  TrieNode(char c, long f)
+  {
+    this.children = new HashMap<Character, TrieNode>();
+    this.c = c;
+    this.f = f;
+    this.endOfWord = false;
+  }
+}
+
+class Trie
+{  
+  TrieNode root;
+
+  Trie() {
+    root = new TrieNode('\0', 0);
+  }
+
+  void insert(String word, long f) {
+    TrieNode curr = root;
+    
+    for (char letter : word.toCharArray()) {
+      if (!curr.children.containsKey(letter)) {
+        TrieNode node = new TrieNode(letter, 0);
+        curr.children.put(letter, node);
+      }
+      curr = curr.children.get(letter);
+    }
+    
+    curr.endOfWord = true;
+    curr.f = f;
+  }
+
+  ArrayList<StrFreq> search(String prefix) 
+  {
+    TrieNode curr = root;
+    ArrayList<StrFreq> suggestions = new ArrayList<StrFreq>();
+
+    for (char letter : prefix.toCharArray())
+    {
+      if (!curr.children.containsKey(letter)) 
+      {
+        return suggestions;
+      }
+      curr = curr.children.get(letter);
+    }
+
+    getWords(prefix, curr, suggestions);
+
+    return suggestions;
+  }
+
+  // Helper function to collect all words under a given node
+  void getWords(String prefix, TrieNode node, ArrayList<StrFreq> suggests) 
+  {
+    if (node.endOfWord) {
+      StrFreq sf = new StrFreq(prefix, node.f);
+      suggests.add(sf);
+    }
+
+    for (char letter : node.children.keySet()) {
+      getWords(prefix+letter, node.children.get(letter), suggests);
+    }
+  }
+}
+
+HashMap<String, Box> strToBox = new HashMap<String, Box>();
+HashMap<String, Box> suggestionToBox = new HashMap<String, Box>();
+String[] CurrSuggestions;
 
 int gridRows = 6; // Number of rows
 int gridCols = 6; // Number of columns
@@ -124,6 +221,9 @@ void drawGrid() {
         fill(200);
         rect(x, y, buttonWidth, buttonHeight);
         
+        Box box = new Box(x, y, buttonWidth, buttonHeight);
+        strToBox.put(alphabetGroups[index], box);
+        
         // Display the group of letters
         fill(0);
         textAlign(CENTER, CENTER);
@@ -134,16 +234,6 @@ void drawGrid() {
    // Draw grid lines
   stroke(0); // Set grid line color
   strokeWeight(1); // Set line thickness
-  for (int i = 0; i <= gridRows; i++) {
-    // Draw horizontal lines
-    float y = height / 2 - sizeOfInputArea / 2 + i * buttonHeight;
-    line(width / 2 - sizeOfInputArea / 2, y, width / 2 + sizeOfInputArea / 2, y);
-  }
-  for (int j = 0; j <= gridCols; j++) {
-    // Draw vertical lines
-    float x = width / 2 - sizeOfInputArea / 2 + j * buttonWidth;
-    line(x, height / 2 - sizeOfInputArea / 2, x, height / 2 + sizeOfInputArea / 2);
-  }
 }
 
 
@@ -154,28 +244,21 @@ boolean didMouseClick(float x, float y, float w, float h) //simple function to d
 }
 
 void mousePressed() {
-  for (int i = 0; i < gridRows; i++) {
-    for (int j = 0; j < gridCols; j++) {
-      int index = i * gridCols + j;
-      if (index < alphabetGroups.length) {
-        float x = width / 2 - sizeOfInputArea / 2 + j * buttonWidth;
-        float y = height / 2 - sizeOfInputArea / 2 + i * buttonHeight;
-
-        // Check if the user clicked on the current letter box
-        if (didMouseClick(x, y, buttonWidth, buttonHeight)) {
-          if (alphabetGroups[index].equals("-")) {
-            // If the clicked letter is "-", add a space to the typed string
-            currentTyped += " ";
-          } else if (alphabetGroups[index].equals("<")) {
-            // If the clicked letter is "<", perform a backspace
-            if (currentTyped.length() > 0) {
-              currentTyped = currentTyped.substring(0, currentTyped.length() - 1);
-            }
-          } else {
-            // Add the selected letter group to the current typed string
-            currentTyped += alphabetGroups[index];
-          }
+  if (startTime == 0) return;
+  for (String s : alphabetGroups) {
+    Box box = strToBox.get(s);
+    if (didMouseClick(box.x, box.y, box.w, box.h)) {
+      if (s.equals("-")) {
+        // If the clicked letter is "-", add a space to the typed string
+        currentTyped += " ";
+      } else if (s.equals("<")) {
+        // If the clicked letter is "<", perform a backspace
+        if (currentTyped.length() > 0) {
+          currentTyped = currentTyped.substring(0, currentTyped.length() - 1);
         }
+      } else {
+        // Add the selected letter group to the current typed string
+        currentTyped += s;
       }
     }
   }

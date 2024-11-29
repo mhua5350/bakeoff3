@@ -324,6 +324,7 @@ void mousePressed() {
       currentTyped += currSuggestions[i];
       currentTyped += " ";
       currPrefix = "";
+      setDefaultSuggestions();
     }
   }
   

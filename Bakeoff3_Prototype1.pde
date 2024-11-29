@@ -124,11 +124,12 @@ HashMap<Integer, Box> suggestionToBox = new HashMap<Integer, Box>();
 String[] currSuggestions;
 Trie trie = new Trie();
 
-boolean prefixChanged = false;
+
 String currPrefix = "";
+int prefixLengthThreshold = 1;
 int gridRows = 6; // Number of rows
 int gridCols = 6; // Number of columns
-int numSuggestions = 3;
+int numSuggestions = 4;
 float buttonWidth, buttonHeight; // Size of each grid button
 float suggestionWidth;
 String[] alphabetGroups = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "-", "<"}; // Letter groups for grid
@@ -168,6 +169,7 @@ void setup()
     trie.insert(word, freq);
   }
   
+  // Set each suggestion to 0 initially
   currSuggestions = new String[numSuggestions];
   for (int i = 0; i < numSuggestions; i++) {
     currSuggestions[i] = ""; 
@@ -236,6 +238,7 @@ void drawSuggestionGrid() {
     fill(200);
     rect(x, y, suggestionWidth, buttonHeight);
     
+    // Map the suggestion box to its location information
     Box box = new Box(x, y, suggestionWidth, buttonHeight);
     suggestionToBox.put(i, box);
     
@@ -262,6 +265,7 @@ void drawGrid() {
         fill(200);
         rect(x, y, buttonWidth, buttonHeight);
         
+        // Map the character to its location information
         Box box = new Box(x, y, buttonWidth, buttonHeight);
         strToBox.put(alphabetGroups[index], box);
         
@@ -277,15 +281,15 @@ void drawGrid() {
   strokeWeight(1); // Set line thickness
 }
 
-
-//my terrible implementation you can entirely replace
 boolean didMouseClick(float x, float y, float w, float h) //simple function to do hit testing
 {
-  return (mouseX > x && mouseX<x+w && mouseY>y && mouseY<y+h); //check to see if it is in button bounds
+  return (mouseX > x && mouseX < x + w && mouseY > y && mouseY < y + h); //check to see if it is in button bounds
 }
 
 void mousePressed() {
   if (startTime == 0) return;
+  
+  // Check if a character is pressed
   for (String s : alphabetGroups) {
     Box box = strToBox.get(s);
     if (didMouseClick(box.x, box.y, box.w, box.h)) {
@@ -293,7 +297,6 @@ void mousePressed() {
         // If the clicked letter is "-", add a space to the typed string
         currentTyped += " ";
         currPrefix = "";
-        prefixChanged = true;
       } else if (s.equals("<")) {
         // If the clicked letter is "<", perform a backspace
         if (currentTyped.length() > 0) {
@@ -301,21 +304,19 @@ void mousePressed() {
         }
         if (currPrefix.length() > 0) {
           currPrefix = currPrefix.substring(0, currPrefix.length() - 1);
-          prefixChanged = true;
         }
       } else {
         // Add the selected letter group to the current typed string
         currentTyped += s;
         currPrefix += s;
-        prefixChanged = true;
       }
     }
   }
   
+  // Check if a suggestion is pressed
   for (int i = 0; i < numSuggestions; i++) {
     Box box = suggestionToBox.get(i);
     if (didMouseClick(box.x, box.y, box.w, box.h)) {
-      prefixChanged = true;
       currentTyped = currentTyped.substring(0, currentTyped.length() - currPrefix.length());
       currentTyped += currSuggestions[i];
       currentTyped += " ";
@@ -323,7 +324,9 @@ void mousePressed() {
     }
   }
   
-  if (prefixChanged && currPrefix.length() > 1) {
+  // If current prefix is long enough, suggest words
+  if (currPrefix.length() >= prefixLengthThreshold) {
+    // Find and sort all words with that prefix
     ArrayList<StrFreq> allSuggestions = trie.search(currPrefix);
     Collections.sort(allSuggestions, new Comparator<StrFreq>() {
       public int compare(StrFreq kv1, StrFreq kv2) {
@@ -331,6 +334,7 @@ void mousePressed() {
       }
     });
     
+    // Find the top 3 suggestions
     int totalNumSuggestions = min(allSuggestions.size(), numSuggestions); 
     for (int i = 0; i < numSuggestions; i++) {
       if (i < totalNumSuggestions) {
@@ -341,8 +345,6 @@ void mousePressed() {
       }
     }
   }
-  
-  
 
   // Handle the "NEXT" button click
   if (didMouseClick(600, 600, 200, 200)) {
